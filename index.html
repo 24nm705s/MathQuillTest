@@ -55,34 +55,6 @@
             outline: none;
         }
         
-        /* スマホ対応用の隠しinput */
-        .mobile-input {
-            position: absolute;
-            left: -9999px;
-            opacity: 0;
-            pointer-events: none;
-        }
-        
-        /* スマホデバイスでの調整 */
-        @media (max-width: 768px) {
-            #math-field {
-                position: relative;
-                cursor: text;
-            }
-            
-            .mobile-input {
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                opacity: 0;
-                z-index: 10;
-                pointer-events: auto;
-                font-size: 16px; /* iOSのズーム防止 */
-            }
-        }
-        
         .instructions {
             background-color: #e3f2fd;
             padding: 15px;
@@ -98,6 +70,19 @@
         
         .instructions ul {
             margin-bottom: 0;
+        }
+        
+        /* モバイル用隠しinput */
+        .mobile-input {
+            position: absolute;
+            opacity: 0;
+            height: 0;
+            width: 0;
+        }
+        
+        /* モバイル環境でのMathQuillコンテナ調整 */
+        .math-field-container {
+            position: relative;
         }
     </style>
 </head>
@@ -118,8 +103,10 @@
         
         <div class="editor-section">
             <div class="editor-label">数式入力:</div>
-            <div id="math-field">
-                <input type="text" class="mobile-input" id="mobile-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+            <div class="math-field-container">
+                <div id="math-field"></div>
+                <!-- モバイル用の隠しinput -->
+                <input type="text" class="mobile-input" id="mobile-math-input" autocomplete="off" autocapitalize="off" spellcheck="false">
             </div>
         </div>
     </div>
@@ -137,6 +124,8 @@
                 this.containerId = containerId;
                 this.container = document.getElementById(containerId);
                 this.mathField = null;
+                this.isMobile = this.checkIfMobile();
+                this.mobileInput = null;
                 this.options = {
                     spaceBehavesLikeTab: true,
                     leftRightIntoCmdGoes: 'up',
@@ -152,6 +141,12 @@
                 };
                 
                 this.init();
+            }
+            
+            // モバイルデバイス判定
+            checkIfMobile() {
+                return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                       ('ontouchstart' in window && navigator.maxTouchPoints > 0);
             }
             
             init() {
@@ -171,83 +166,55 @@
                     }
                 });
                 
-                // スマホ対応の初期化
-                this.initMobileSupport();
-                
-                this.mathField.focus();
-            }
-            
-            initMobileSupport() {
-                // モバイルデバイスの判定
-                this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
-                               ('ontouchstart' in window) || 
-                               (navigator.maxTouchPoints > 0);
-                
+                // モバイル対応の設定
                 if (this.isMobile) {
-                    const mobileInput = this.container.querySelector('.mobile-input');
-                    if (mobileInput) {
-                        this.mobileInput = mobileInput;
-                        this.setupMobileEvents();
-                    }
+                    this.setupMobileSupport();
+                } else {
+                    this.mathField.focus();
                 }
             }
             
-            setupMobileEvents() {
-                // MathQuillエリアクリック時の処理
-                this.container.addEventListener('click', (e) => {
-                    if (this.isMobile && this.mobileInput) {
-                        e.preventDefault();
-                        this.mobileInput.focus();
+            setupMobileSupport() {
+                // 隠しinputを取得
+                this.mobileInput = document.getElementById('mobile-math-input');
+                if (!this.mobileInput) return;
+                
+                // コンテナ要素にクリックイベントを追加
+                const container = this.container.parentElement;
+                container.addEventListener('click', () => {
+                    this.mobileInput.focus();
+                });
+                
+                // 隠しinputの入力イベントを監視
+                this.mobileInput.addEventListener('input', (e) => {
+                    const inputText = e.target.value;
+                    
+                    // 入力されたテキストをMathQuillに適用
+                    if (inputText) {
+                        // 簡単なLaTeXコマンド変換を行う
+                        this.processInput(inputText);
+                        // 入力欄をクリア
+                        e.target.value = '';
                     }
                 });
                 
-                // 隠しinputの入力処理
-                if (this.mobileInput) {
-                    let inputTimeout;
-                    
-                    this.mobileInput.addEventListener('input', (e) => {
-                        clearTimeout(inputTimeout);
-                        inputTimeout = setTimeout(() => {
-                            const value = e.target.value;
-                            if (value) {
-                                // 簡単なLaTeX変換
-                                const convertedValue = this.convertToLatex(value);
-                                this.mathField.latex(convertedValue);
-                                this.handleEdit();
-                                
-                                // inputをクリア
-                                e.target.value = '';
-                            }
-                        }, 100);
-                    });
-                    
-                    // フォーカス管理
-                    this.mobileInput.addEventListener('focus', () => {
-                        this.container.style.borderColor = '#4CAF50';
-                    });
-                    
-                    this.mobileInput.addEventListener('blur', () => {
-                        this.container.style.borderColor = '#ddd';
-                    });
-                }
+                // キーボードイベント処理
+                this.mobileInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Backspace' && !e.target.value) {
+                        // 空欄でバックスペースを押した場合は数式の一部を削除
+                        this.mathField.keystroke('Backspace');
+                    }
+                });
             }
             
-            convertToLatex(input) {
-                // 基本的な変換ルール
-                let latex = input
-                    .replace(/\^(\w+)/g, '^{$1}')  // x^2 -> x^{2}
-                    .replace(/_(\w+)/g, '_{$1}')   // x_1 -> x_{1}
-                    .replace(/sqrt\(([^)]+)\)/g, '\\sqrt{$1}')  // sqrt(x) -> \sqrt{x}
-                    .replace(/frac\(([^,]+),([^)]+)\)/g, '\\frac{$1}{$2}')  // frac(1,2) -> \frac{1}{2}
-                    .replace(/int\b/g, '\\int')    // int -> \int
-                    .replace(/sum\b/g, '\\sum')    // sum -> \sum
-                    .replace(/alpha\b/g, '\\alpha')
-                    .replace(/beta\b/g, '\\beta')
-                    .replace(/gamma\b/g, '\\gamma')
-                    .replace(/pi\b/g, '\\pi')
-                    .replace(/theta\b/g, '\\theta');
-                
-                return latex;
+            processInput(text) {
+                // テキスト入力をMathQuillに反映
+                // 基本的な文字入力
+                for (let i = 0; i < text.length; i++) {
+                    const char = text[i];
+                    this.mathField.typedText(char);
+                }
+                this.handleEdit();
             }
             
             handleEdit() {
@@ -265,7 +232,7 @@
             }
             
             setLatex(latex) {
-                if (this.mathField) {
+                if this.mathField) {
                     this.mathField.latex(latex);
                     this.handleEdit();
                 }
