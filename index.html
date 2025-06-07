@@ -74,16 +74,23 @@
         
         /* モバイル用の隠しinput */
         .hidden-input {
-            position: fixed;
-            top: -100px;
+            position: absolute;
+            left: 0;
+            bottom: 0;
             opacity: 0;
-            height: 0;
+            height: 1px;
+            width: 1px;
+            background: transparent;
+            border: none;
+            outline: none;
+            -webkit-appearance: none;
         }
         
         /* モバイル環境でのタップ領域 */
         .math-field-wrapper {
             position: relative;
             cursor: text;
+            min-height: 40px;
         }
     </style>
 </head>
@@ -184,9 +191,59 @@
                 });
                 
                 this.mobileInput.addEventListener('keydown', (e) => {
-                    if (e.key === 'Backspace' && !e.target.value) {
+                    switch(e.key) {
+                        case 'Backspace':
+                            if (!e.target.value) {
+                                e.preventDefault();
+                                this.mathField.keystroke('Backspace');
+                            }
+                            break;
+                        case 'ArrowLeft':
+                            e.preventDefault();
+                            this.mathField.keystroke('Left');
+                            break;
+                        case 'ArrowRight':
+                            e.preventDefault();
+                            this.mathField.keystroke('Right');
+                            break;
+                        case 'ArrowUp':
+                            e.preventDefault();
+                            this.mathField.keystroke('Up');
+                            break;
+                        case 'ArrowDown':
+                            e.preventDefault();
+                            this.mathField.keystroke('Down');
+                            break;
+                    }
+                    
+                    // Ctrl+A対応
+                    if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
                         e.preventDefault();
-                        this.mathField.keystroke('Backspace');
+                        this.mathField.select();
+                    }
+                });
+
+                // タッチイベントでのカーソル移動対応
+                let touchStartX = 0;
+                this.container.addEventListener('touchstart', (e) => {
+                    touchStartX = e.touches[0].clientX;
+                });
+
+                this.container.addEventListener('touchend', (e) => {
+                    const touchEndX = e.changedTouches[0].clientX;
+                    const diff = touchEndX - touchStartX;
+                    
+                    // 小さな移動は通常のタップとして扱う
+                    if (Math.abs(diff) < 10) {
+                        this.mobileInput.focus();
+                        return;
+                    }
+                    
+                    // 左右スワイプでカーソル移動
+                    if (diff > 0) {
+                        this.mathField.keystroke('Right');
+                    } else {
+                        this.mathField.keystroke('Left');
                     }
                 });
             }
