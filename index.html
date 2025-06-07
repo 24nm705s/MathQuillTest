@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MathQuill 数式入力</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/mathquill/0.10.1/mathquill.min.css">
+  <style>
+    body { 
+      font-family: sans-serif; 
+      margin: 2em; 
+      background: #f5f5f5;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      padding: 2em;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      text-align: center;
+      margin-bottom: 1.5em;
+    }
+    #math-field { 
+      min-height: 3em; 
+      border: 2px solid #ddd; 
+      padding: 1em; 
+      width: 100%;
+      border-radius: 4px;
+      font-size: 18px;
+      background: white;
+      transition: border-color 0.2s;
+    }
+    #math-field:focus-within {
+      border-color: #4CAF50;
+      outline: none;
+    }
+    @media (max-width: 600px) {
+      body { margin: 1em; }
+      .container { padding: 1em; }
+      #math-field { font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📐 数式入力</h1>
+    <div id="math-field"></div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathquill/0.10.1/mathquill.min.js"></script>
+  <script src="script/MathQuillEditor.js"></script>
+  <script>
+    let mathEditor;
+    
+    window.addEventListener('DOMContentLoaded', function() {
+      try {
+        mathEditor = new MathQuillEditor('math-field', {
+          enableMobileSupport: true,
+          enableLogging: false
+        });
+      } catch (error) {
+        console.error('Failed to initialize MathQuillEditor:', error);
+      }
+    });
+  </script>
+</body>
+</html>
